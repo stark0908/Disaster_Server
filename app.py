@@ -1,7 +1,5 @@
-# --- START OF MODIFIED app.py ---
-
 import traceback
-import os # <-- Added for environment variables
+import os
 from flask import Flask, request, jsonify, session, render_template, redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
 from flask_bcrypt import Bcrypt
@@ -12,28 +10,23 @@ from datetime import datetime, timedelta
 app = Flask(__name__)
 
 # --- Configuration ---
-# Explicitly use SQLite (accepting data loss on Render free tier)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///sos.db'
+# Use SQLite with path in /tmp for Render compatibility
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////tmp/sos.db'
 
 # IMPORTANT: Set SECRET_KEY as an environment variable in Render.
 # The fallback value here is INSECURE and only for basic local testing if env var isn't set.
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'change-me-in-render-environment-variables')
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-# Optional Session Cookie settings (uncomment in production with HTTPS if needed)
-# app.config['SESSION_COOKIE_SECURE'] = True
-# app.config['SESSION_COOKIE_HTTPONLY'] = True
-# app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 
 # --- Extensions Initialization ---
 db = SQLAlchemy(app)
 bcrypt = Bcrypt(app)
 # Allow requests from any origin for prototype, restrict later if needed.
 CORS(app, supports_credentials=True, origins="*")
-migrate = Migrate(app, db) # Flask-Migrate setup
+migrate = Migrate(app, db)
 
 # --- Database Models ---
-# (Models remain unchanged)
 class SOSMessage(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=True, default='Anonymous')
@@ -59,12 +52,11 @@ class Announcement(db.Model):
 # --- Admin Credentials (Left as is per prototype requirement) ---
 ADMIN_USERNAME = 'admin'
 # Note: Regenerating hash on every start isn't ideal, but okay for this prototype stage.
-# A better approach would be to store the pre-computed hash in an env var too.
 try:
     ADMIN_PASSWORD_HASH = bcrypt.generate_password_hash('admin').decode('utf-8')
 except Exception as e:
     print(f"Warning: Could not generate admin password hash - {e}")
-    ADMIN_PASSWORD_HASH = None # Handle case where bcrypt might fail early
+    ADMIN_PASSWORD_HASH = None
 
 # --- Helper Functions ---
 def is_admin():
@@ -73,7 +65,7 @@ def is_admin():
 
 # --- Routes ---
 
-# Basic Pages & Auth (Unchanged)
+# Basic Pages & Auth
 @app.route('/')
 def home():
     return render_template('index.html')
@@ -120,7 +112,7 @@ def login():
 
 # --- SOS Submission Routes ---
 
-# Original Web Form SOS Submission (Unchanged)
+# Original Web Form SOS Submission
 @app.route('/submit_sos', methods=['POST'])
 def submit_sos_web():
     try:
@@ -173,12 +165,11 @@ def submit_sos_web():
         return jsonify({'error': 'Error submitting SOS via web form', 'details': str(e)}), 500
 
 
-# API Endpoint to handle BOTH formats (Unchanged Logic)
+# API Endpoint to handle BOTH formats
 @app.route('/api/v1/sos', methods=['POST'])
 def api_submit_sos_flexible():
     """
     Handles SOS submissions via API. Accepts two formats:
-    (Docstring unchanged)
     """
     if not request.is_json:
         return jsonify({"error": "Request must be JSON"}), 400
@@ -187,7 +178,6 @@ def api_submit_sos_flexible():
     print(f"\n--- INCOMING /api/v1/sos REQUEST ---")
     print(f"Received Raw Data: {data}")
 
-    # (Variable declarations unchanged)
     sos_name = None
     sos_location = None
     sos_message = None
@@ -199,13 +189,12 @@ def api_submit_sos_flexible():
 
     location_data = data.get('location')
 
-    # --- Format Detection and Validation Logic (Unchanged) ---
+    # --- Format Detection and Validation Logic ---
     if isinstance(location_data, dict):
-        # Structured Format Logic (Unchanged)
+        # Structured Format Logic
         detected_format = "Structured"
         print(f"Detected Format: {detected_format}")
         if sos_source is None: sos_source = 'api_structured'
-        # ... (validation for lat, lon, disasterType, mobileNumber remains the same) ...
         disaster_type = data.get('disasterType')
         details = data.get('details') # Optional
         mobile_number = data.get('mobileNumber') # Optional
@@ -250,11 +239,10 @@ def api_submit_sos_flexible():
             sos_message = "\n".join(message_parts)
 
     elif isinstance(location_data, str):
-        # Legacy Format Logic (Unchanged)
+        # Legacy Format Logic
         detected_format = "Legacy"
         print(f"Detected Format: {detected_format}")
         if sos_source is None: sos_source = 'api_legacy'
-        # ... (validation for location string, message, optional name remains the same) ...
         message = data.get('message')
         name = data.get('name')
 
@@ -275,15 +263,14 @@ def api_submit_sos_flexible():
         # Invalid format error
         errors['location'] = 'Missing or invalid location field. Must be a string or an object {"latitude": ..., "longitude": ...}'
 
-    # --- Final Validation Check (Unchanged) ---
+    # --- Final Validation Check ---
     if errors:
         print(f"Validation failed for /api/v1/sos: {errors}")
         return jsonify({"error": "Validation failed", "details": errors}), 400
 
-    # --- Database Save Attempt (Unchanged) ---
+    # --- Database Save Attempt ---
     print("-" * 20)
     print(f"Attempting to save with format: {detected_format}")
-    # ... (debug prints remain the same) ...
     print(f"  Name: {sos_name!r}")
     print(f"  Location: {sos_location!r}")
     print(f"  Message: {sos_message!r}")
@@ -292,7 +279,6 @@ def api_submit_sos_flexible():
     print(f"  Source: {sos_source!r}")
     print("-" * 20)
     try:
-        # ... (create and save SOSMessage object logic remains the same) ...
         if not sos_location: raise ValueError("Internal processing error: sos_location cannot be empty.")
         if not sos_message: raise ValueError("Internal processing error: sos_message cannot be empty.")
 
@@ -319,11 +305,9 @@ def api_submit_sos_flexible():
         }), 201
 
     except Exception as e:
-        # ... (error handling and logging remain the same) ...
         db.session.rollback()
         print(f"\n--- DATABASE OR PROCESSING ERROR during save ---")
         print(f"ERROR saving SOS from /api/v1/sos: {str(e)}")
-        # ... (more detailed error prints) ...
         print(f"Data attempted:")
         print(f"  Name: {sos_name!r}")
         print(f"  Location: {sos_location!r}")
@@ -341,10 +325,6 @@ def api_submit_sos_flexible():
 
 
 # --- Admin Data Retrieval & Management ---
-# (All routes /get_sos_messages, /update_status, /get_announcements,
-# /create_announcement, /update_announcement, /delete_announcement remain unchanged
-# Including the commented-out is_admin() checks as they were in the original)
-
 @app.route('/get_sos_messages')
 def get_sos_messages():
     #if not is_admin():
@@ -381,7 +361,6 @@ def update_status(sos_id):
         return jsonify({'message': f'Invalid status: "{new_status}". Allowed statuses are: {", ".join(allowed_statuses)}'}), 400
 
     try:
-        # Use db.session.get (SQLAlchemy >= 1.4 recommended)
         sos = db.session.get(SOSMessage, sos_id)
         if sos:
             sos.status = new_status
@@ -396,7 +375,7 @@ def update_status(sos_id):
         print(traceback.format_exc())
         return jsonify({'error': 'Internal server error during status update', 'details': str(e)}), 500
 
-# --- Announcements --- (Unchanged)
+# --- Announcements ---
 @app.route('/get_announcements')
 def get_announcements():
     try:
@@ -435,12 +414,10 @@ def create_announcement():
 
 @app.route('/update_announcement/<int:id>', methods=['PUT'])
 def update_announcement(id):
-    # print(request.headers) # Can be removed if not needed for debugging
     #if not is_admin(): return jsonify({'message': 'Unauthorized'}), 401
     if not request.is_json: return jsonify({"message": "Request must be JSON"}), 400
 
     try:
-        # Use db.session.get
         announcement = db.session.get(Announcement, id)
         if not announcement:
             return jsonify({"message": "Announcement not found"}), 404
@@ -472,7 +449,6 @@ def delete_announcement(id):
     #if not is_admin(): return jsonify({'message': 'Unauthorized'}), 401
 
     try:
-        # Use db.session.get
         announcement = db.session.get(Announcement, id)
         if not announcement:
             return jsonify({"message": "Announcement not found"}), 404
@@ -488,16 +464,14 @@ def delete_announcement(id):
         print(traceback.format_exc())
         return jsonify({"error": "Failed to delete announcement", "details": str(e)}), 500
 
+# Initialize database tables on startup (for Render deployment)
+@app.before_first_request
+def initialize_database():
+    db.create_all()
+    print("Database initialized!")
 
 # --- App Initialization & Run (for Local Development) ---
-# This block is primarily for running the app locally.
-# Render will use the 'Start Command' (gunicorn) instead.
 if __name__ == '__main__':
-    # Removed db.create_all() here. Use 'flask db init/migrate/upgrade' for schema management.
-    # You might run 'flask db upgrade' locally before starting the server if needed.
+    port = int(os.environ.get('PORT', 5000))
     print("Starting Flask development server locally...")
-    # The host '0.0.0.0' makes it accessible on your local network
-    # debug=True enables auto-reloading and the debugger (DISABLE in production)
     app.run(host='0.0.0.0', port=port, debug=True)
-
-# --- END OF MODIFIED app.py ---
