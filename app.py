@@ -66,19 +66,19 @@ def is_admin():
 # --- Routes ---
 
 # Basic Pages & Auth
-@app.route('/')
-def home():
-    return render_template('index.html')
+#@app.route('/')
+#def home():
+    #return render_template('index.html')
 
-@app.route('/login_page')
-def login_page():
-    return render_template('login.html')
+#@app.route('/login_page')
+#def login_page():
+    #return render_template('login.html')
 
-@app.route('/dashboard')
-def dashboard():
-    if not is_admin():
-        return redirect(url_for('login_page'))
-    return render_template('dashboard.html')
+#@app.route('/dashboard')
+#def dashboard():
+    #if not is_admin():
+        #return redirect(url_for('login_page'))
+    #return render_template('dashboard.html')
 
 @app.route('/check_login')
 def check_login():
