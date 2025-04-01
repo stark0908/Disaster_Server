@@ -465,10 +465,10 @@ def delete_announcement(id):
         return jsonify({"error": "Failed to delete announcement", "details": str(e)}), 500
 
 # Initialize database tables on startup (for Render deployment)
-@app.before_first_request
-def initialize_database():
-    db.create_all()
-    print("Database initialized!")
+#@app.before_first_request
+#def initialize_database():
+    #db.create_all()
+    #print("Database initialized!")
 
 # --- App Initialization & Run (for Local Development) ---
 if __name__ == '__main__':
