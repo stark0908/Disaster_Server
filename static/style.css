@@ -1,0 +1,20 @@
+button {
+    cursor: pointer;
+    transition: opacity 0.3s ease;
+}
+
+button:hover {
+    opacity: 0.8;
+}
+
+.announcement {
+    margin: 10px 0;
+    padding: 15px;
+    border-left: 4px solid #ff4444;
+}
+
+.sos-card {
+    margin: 15px 0;
+    padding: 15px;
+    border: 1px solid #ddd;
+}

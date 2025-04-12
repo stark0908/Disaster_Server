@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Disaster Help Platform</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <style>
+        /* Basic styling (keep your existing styles.css for more) */
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; background-color: #f4f7f6; color: #333; }
+        h1, h2 { text-align: center; color: #d9534f; } /* Reddish color for headings */
+        .container { background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .announcements { margin-bottom: 30px; border-left: 5px solid #f0ad4e; /* Orange border */ padding-left: 15px; }
+        .announcement-item { background: #fff9e6; padding: 10px; margin: 10px 0; border-radius: 4px; border: 1px solid #f0ad4e; }
+        form { background: #e9ecef; padding: 20px; border-radius: 8px; border: 1px solid #ced4da; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; color: #495057; }
+        input[type="text"],
+        input[type="number"],
+        input[type="tel"],
+        textarea,
+        select {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 15px; /* Increased spacing */
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            box-sizing: border-box; /* Include padding in width */
+            font-size: 1rem;
+        }
+        textarea { min-height: 80px; }
+        button[type="submit"] { /* Style the SOS button */
+            background: #d9534f; /* Red */
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 1.1rem;
+            width: 100%;
+            transition: background-color 0.3s ease;
+        }
+        button[type="submit"]:hover { background: #c9302c; /* Darker red */ }
+        .admin-login-link { margin-top: 30px; text-align: center; }
+        .admin-login-link button { /* Style admin login button differently */
+             background: #5bc0de; /* Info blue */
+             color: white;
+             border: none;
+             padding: 10px 20px;
+             cursor: pointer;
+             border-radius: 4px;
+             font-size: 1rem;
+             transition: background-color 0.3s ease;
+        }
+         .admin-login-link button:hover { background: #31b0d5; /* Darker blue */ }
+         #sosStatus { margin-top: 15px; text-align: center; font-weight: bold; min-height: 1.2em; /* Prevent layout shift */}
+         .success { color: #28a745; } /* Green */
+         .error { color: #d9534f; } /* Red */
+
+         /* Responsive adjustments */
+         @media (max-width: 600px) {
+            body { padding: 10px; }
+            .container { padding: 20px; }
+            button[type="submit"], .admin-login-link button { padding: 10px 15px; font-size: 1rem; }
+         }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Disaster Help Platform</h1>
+
+        <div class="announcements">
+            <h2>Emergency Announcements</h2>
+            <div id="announcementList">
+                <!-- Announcements will be loaded here by script.js -->
+                <p>Loading announcements...</p>
+            </div>
+        </div>
+
+        <h2>Submit SOS Request</h2>
+        <!-- Updated Form Structure -->
+        <form id="sosForm">
+            <div>
+                <label for="disasterType">Type of Disaster:<span style="color:red;">*</span></label>
+                <select id="disasterType" name="disasterType" required>
+                    <option value="" disabled selected>-- Select Type --</option>
+                    <option value="Fire">Fire</option>
+                    <option value="Flood">Flood</option>
+                    <option value="Earthquake">Earthquake</option>
+                    <option value="Medical Emergency">Medical Emergency</option>
+                    <option value="Trapped/Stranded">Trapped / Stranded</option>
+                    <option value="Other">Other</option>
+                </select>
+            </div>
+
+            <div>
+                <label for="latitude">Location (Latitude):<span style="color:red;">*</span></label>
+                <input type="number" id="latitude" name="latitude" placeholder="e.g., 40.7128" step="any" required>
+                 <!-- Consider adding a button here to fetch current location via Geolocation API -->
+            </div>
+
+            <div>
+                <label for="longitude">Location (Longitude):<span style="color:red;">*</span></label>
+                <input type="number" id="longitude" name="longitude" placeholder="e.g., -74.0060" step="any" required>
+            </div>
+
+             <div>
+                <label for="details">Optional Details:</label>
+                <textarea id="details" name="details" placeholder="Any additional information (e.g., number of people, specific needs)" rows="3"></textarea>
+            </div>
+
+             <div>
+                <label for="mobileNumber">Optional Mobile Number:</label>
+                <input type="tel" id="mobileNumber" name="mobileNumber" placeholder="Enter if you can be contacted">
+            </div>
+
+            <button type="submit">Send SOS</button>
+            <!-- Feedback Area -->
+            <div id="sosStatus"></div>
+
+        </form>
+
+        <div class="admin-login-link">
+            <a href="/login_page"><button>Response Team Login</button></a>
+        </div>
+    </div> <!-- End Container -->
+
+    <!-- Link to your existing script.js file -->
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
