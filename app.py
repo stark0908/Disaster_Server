@@ -1,6 +1,6 @@
 import traceback
 import os
-from flask import Flask, request, jsonify, session, render_template, redirect, url_for
+from flask import Flask, request, jsonify, session, render_template, redirect, url_for, cli
 from flask_sqlalchemy import SQLAlchemy
 from flask_bcrypt import Bcrypt
 from flask_cors import CORS
@@ -10,23 +10,51 @@ from datetime import datetime, timedelta
 app = Flask(__name__)
 
 # --- Configuration ---
-# Use SQLite with path in /tmp for Render compatibility
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////tmp/sos.db'
+
+# === DATABASE CONFIGURATION START ===
+# Get the database URL from the environment variable (Render standard)
+database_url = os.environ.get('DATABASE_URL')
+
+# Optional: Fallback to the specific internal URL if DATABASE_URL isn't set
+# This might be useful if you want to force the internal URL even if Render provides the external one in DATABASE_URL
+# OR if running locally without setting DATABASE_URL.
+# Consider setting a dedicated env var like INTERNAL_DATABASE_URL in Render if you *must* use the internal one.
+if not database_url:
+    print("WARNING: DATABASE_URL environment variable not found. Falling back to hardcoded internal URL (ensure this is correct for your environment).")
+    # The internal URL you provided:
+    database_url = "postgresql://disaster_db_xdtu_user:loFkGpxAIXTNwKfqCD1x10kgsJJxkWV1@dpg-cvi54jd2ng1s73a1evpg-a/disaster_db_xdtu"
+    # If using the hardcoded fallback locally, ensure you have PostgreSQL running and the DB exists.
+
+# Ensure the URI starts with postgresql:// for SQLAlchemy compatibility
+# Render's DATABASE_URL might start with postgres://
+if database_url and database_url.startswith("postgres://"):
+     database_url = database_url.replace("postgres://", "postgresql://", 1)
+
+if not database_url:
+     # If still no database_url after checks, raise an error.
+     raise ValueError("Database URI is not configured. Set the DATABASE_URL environment variable or check the hardcoded fallback.")
+
+app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+# === DATABASE CONFIGURATION END ===
 
 # IMPORTANT: Set SECRET_KEY as an environment variable in Render.
 # The fallback value here is INSECURE and only for basic local testing if env var isn't set.
-app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'change-me-in-render-environment-variables')
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'change-me-in-render-environment-variables-to-something-secure')
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+# Optional: Set SQLALCHEMY_ECHO to True for debugging SQL queries locally if needed
+# app.config['SQLALCHEMY_ECHO'] = os.environ.get('SQLALCHEMY_ECHO', 'False').lower() == 'true'
+
 
 # --- Extensions Initialization ---
 db = SQLAlchemy(app)
 bcrypt = Bcrypt(app)
 # Allow requests from any origin for prototype, restrict later if needed.
 CORS(app, supports_credentials=True, origins="*")
-migrate = Migrate(app, db)
+migrate = Migrate(app, db) # Keep Flask-Migrate for future schema changes
 
 # --- Database Models ---
+# NO CHANGES NEEDED HERE - SQLAlchemy ORM models are generally database-agnostic
 class SOSMessage(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=True, default='Anonymous')
@@ -49,9 +77,8 @@ class Announcement(db.Model):
     def __repr__(self):
         return f'<Announcement {self.id}>'
 
-# --- Admin Credentials (Left as is per prototype requirement) ---
+# --- Admin Credentials (Kept as is) ---
 ADMIN_USERNAME = 'admin'
-# Note: Regenerating hash on every start isn't ideal, but okay for this prototype stage.
 try:
     ADMIN_PASSWORD_HASH = bcrypt.generate_password_hash('admin').decode('utf-8')
 except Exception as e:
@@ -64,6 +91,7 @@ def is_admin():
     return 'user' in session and session.get('user') == ADMIN_USERNAME
 
 # --- Routes ---
+# NO CHANGES NEEDED IN ROUTE LOGIC, assuming correct ORM usage
 
 # Basic Pages & Auth
 @app.route('/')
@@ -100,11 +128,9 @@ def login():
     if not username or not password:
         return jsonify({'message': 'Missing username or password'}), 400
 
-    # Ensure hash was generated successfully before checking
     if ADMIN_PASSWORD_HASH and username == ADMIN_USERNAME and bcrypt.check_password_hash(ADMIN_PASSWORD_HASH, password):
         session['user'] = username
         session.permanent = True
-        # Session lifetime (e.g., 1 day)
         app.permanent_session_lifetime = timedelta(days=1)
         return jsonify({'message': 'Login successful', 'logged_in': True}), 200
     else:
@@ -112,33 +138,27 @@ def login():
 
 # --- SOS Submission Routes ---
 
-# Original Web Form SOS Submission
 @app.route('/submit_sos', methods=['POST'])
 def submit_sos_web():
     try:
-        # Logic to handle both JSON and Form data
         if request.is_json:
             data = request.get_json()
             name = data.get('name')
             location = data.get('location')
             message = data.get('message')
-        # Fallback to form data if not JSON
         elif request.form:
             data = request.form
             name = data.get('name')
             location = data.get('location')
             message = data.get('message')
         else:
-            # No data received or unsupported type
              return jsonify({'message': 'Unsupported content type or no data provided'}), 400
 
-        # Validation
         if not name or not location or not message:
              return jsonify({'message': 'Missing required fields (name, location, message)'}), 400
         if not isinstance(name, str) or not isinstance(location, str) or not isinstance(message, str):
              return jsonify({'message': 'Invalid data types for name, location, or message'}), 400
 
-        # Create and save SOS message
         new_sos = SOSMessage(
             name=name.strip(),
             location=location.strip(),
@@ -149,13 +169,9 @@ def submit_sos_web():
         db.session.add(new_sos)
         db.session.commit()
         print(f"Successfully saved SOS from web form: ID {new_sos.id}")
-        # Respond based on request type
         if request.is_json:
             return jsonify({'message': 'SOS submitted successfully via web form', 'id': new_sos.id}), 201
         else:
-             # Redirect or render template for form submission success?
-             # For now, just return simple success message. Adjust as needed for your frontend.
-             # return redirect(url_for('home')) # Example redirect
              return "SOS submitted successfully!", 201
 
     except Exception as e:
@@ -164,13 +180,8 @@ def submit_sos_web():
         print(traceback.format_exc())
         return jsonify({'error': 'Error submitting SOS via web form', 'details': str(e)}), 500
 
-
-# API Endpoint to handle BOTH formats
 @app.route('/api/v1/sos', methods=['POST'])
 def api_submit_sos_flexible():
-    """
-    Handles SOS submissions via API. Accepts two formats:
-    """
     if not request.is_json:
         return jsonify({"error": "Request must be JSON"}), 400
 
@@ -186,18 +197,15 @@ def api_submit_sos_flexible():
     sos_source = data.get('source')
     errors = {}
     detected_format = "Invalid/Unknown"
-
     location_data = data.get('location')
 
-    # --- Format Detection and Validation Logic ---
     if isinstance(location_data, dict):
-        # Structured Format Logic
         detected_format = "Structured"
         print(f"Detected Format: {detected_format}")
         if sos_source is None: sos_source = 'api_structured'
         disaster_type = data.get('disasterType')
-        details = data.get('details') # Optional
-        mobile_number = data.get('mobileNumber') # Optional
+        details = data.get('details')
+        mobile_number = data.get('mobileNumber')
         latitude = None
         longitude = None
 
@@ -239,7 +247,6 @@ def api_submit_sos_flexible():
             sos_message = "\n".join(message_parts)
 
     elif isinstance(location_data, str):
-        # Legacy Format Logic
         detected_format = "Legacy"
         print(f"Detected Format: {detected_format}")
         if sos_source is None: sos_source = 'api_legacy'
@@ -260,15 +267,12 @@ def api_submit_sos_flexible():
              sos_name = name.strip()
 
     else:
-        # Invalid format error
         errors['location'] = 'Missing or invalid location field. Must be a string or an object {"latitude": ..., "longitude": ...}'
 
-    # --- Final Validation Check ---
     if errors:
         print(f"Validation failed for /api/v1/sos: {errors}")
         return jsonify({"error": "Validation failed", "details": errors}), 400
 
-    # --- Database Save Attempt ---
     print("-" * 20)
     print(f"Attempting to save with format: {detected_format}")
     print(f"  Name: {sos_name!r}")
@@ -327,7 +331,7 @@ def api_submit_sos_flexible():
 # --- Admin Data Retrieval & Management ---
 @app.route('/get_sos_messages')
 def get_sos_messages():
-    #if not is_admin():
+    #if not is_admin(): # Decide if you want to enforce admin check here
     #    return jsonify({'message': 'Unauthorized'}), 401
     try:
         sos_messages = SOSMessage.query.order_by(SOSMessage.created_at.desc()).all()
@@ -347,7 +351,7 @@ def get_sos_messages():
 
 @app.route('/update_status/<int:sos_id>', methods=['POST'])
 def update_status(sos_id):
-    #if not is_admin():
+    #if not is_admin(): # Decide if you want to enforce admin check here
     #    return jsonify({'message': 'Unauthorized'}), 401
     if not request.is_json:
          return jsonify({"message": "Request must be JSON"}), 400
@@ -361,6 +365,7 @@ def update_status(sos_id):
         return jsonify({'message': f'Invalid status: "{new_status}". Allowed statuses are: {", ".join(allowed_statuses)}'}), 400
 
     try:
+        # Use db.session.get() for primary key lookup (more efficient)
         sos = db.session.get(SOSMessage, sos_id)
         if sos:
             sos.status = new_status
@@ -391,7 +396,7 @@ def get_announcements():
 
 @app.route('/create_announcement', methods=['POST'])
 def create_announcement():
-    #if not is_admin(): return jsonify({'message': 'Unauthorized'}), 401
+    #if not is_admin(): return jsonify({'message': 'Unauthorized'}), 401 # Decide if you want to enforce admin check here
     if not request.is_json: return jsonify({"message": "Request must be JSON"}), 400
     data = request.get_json()
     content = data.get('content')
@@ -414,10 +419,11 @@ def create_announcement():
 
 @app.route('/update_announcement/<int:id>', methods=['PUT'])
 def update_announcement(id):
-    #if not is_admin(): return jsonify({'message': 'Unauthorized'}), 401
+    #if not is_admin(): return jsonify({'message': 'Unauthorized'}), 401 # Decide if you want to enforce admin check here
     if not request.is_json: return jsonify({"message": "Request must be JSON"}), 400
 
     try:
+        # Use db.session.get() for primary key lookup
         announcement = db.session.get(Announcement, id)
         if not announcement:
             return jsonify({"message": "Announcement not found"}), 404
@@ -440,15 +446,16 @@ def update_announcement(id):
         })
     except Exception as e:
         db.session.rollback()
-        print(f"Error updating announcement: {str(e)}")
+        print(f"Error updating announcement ID {id}: {str(e)}")
         print(traceback.format_exc())
         return jsonify({"error": "Failed to update announcement", "details": str(e)}), 500
 
 @app.route('/delete_announcement/<int:id>', methods=['DELETE'])
 def delete_announcement(id):
-    #if not is_admin(): return jsonify({'message': 'Unauthorized'}), 401
+    #if not is_admin(): return jsonify({'message': 'Unauthorized'}), 401 # Decide if you want to enforce admin check here
 
     try:
+        # Use db.session.get() for primary key lookup
         announcement = db.session.get(Announcement, id)
         if not announcement:
             return jsonify({"message": "Announcement not found"}), 404
@@ -460,18 +467,42 @@ def delete_announcement(id):
         return jsonify({"message": "Announcement deleted successfully"})
     except Exception as e:
         db.session.rollback()
-        print(f"Error deleting announcement: {str(e)}")
+        print(f"Error deleting announcement ID {id}: {str(e)}")
         print(traceback.format_exc())
         return jsonify({"error": "Failed to delete announcement", "details": str(e)}), 500
 
-# Initialize database tables on startup (for Render deployment)
-#@app.before_first_request
-#def initialize_database():
-    #db.create_all()
-    #print("Database initialized!")
+
+# --- Database Initialization Command ---
+# Remove the @app.before_first_request - it's deprecated and not suitable for prod DB setup.
+# Use a Flask CLI command instead. Run `flask init-db` in Render shell ONCE after deployment.
+@app.cli.command('init-db')
+def init_db_command():
+    """Creates the database tables in the configured database."""
+    try:
+        print(f"Attempting to create database tables for URI: {app.config['SQLALCHEMY_DATABASE_URI'][:app.config['SQLALCHEMY_DATABASE_URI'].find('@')] if '@' in app.config['SQLALCHEMY_DATABASE_URI'] else app.config['SQLALCHEMY_DATABASE_URI']}...") # Avoid logging credentials
+        # No need for app.app_context() here, Flask CLI handles it.
+        db.create_all()
+        print("Database tables created successfully (if they didn't exist).")
+        # If using Flask-Migrate, you might initialize it here too if needed for the very first time
+        # print("Initializing Flask-Migrate...")
+        # os.system('flask db init') # Only if migrations folder doesn't exist
+        # os.system('flask db migrate -m "Initial migration."') # Optional: Create initial migration
+        # os.system('flask db upgrade') # Apply migrations
+    except Exception as e:
+        print(f"ERROR creating database tables: {e}")
+        print(traceback.format_exc())
+        # Exit with error code so Render knows if the command failed
+        cli.abort(1)
+
 
 # --- App Initialization & Run (for Local Development) ---
+# This block is ignored by production WSGI servers like Gunicorn (used by Render)
 if __name__ == '__main__':
+    # Use PORT environment variable provided by Render (or others), default to 5000 locally
     port = int(os.environ.get('PORT', 5000))
-    print("Starting Flask development server locally...")
-    app.run(host='0.0.0.0', port=port, debug=True)
+    # Set debug=False if you want to test closer to production locally
+    # Debug mode should generally be OFF in production (Render handles this)
+    use_debug = os.environ.get('FLASK_DEBUG', 'True').lower() == 'true'
+    print(f"Starting Flask development server locally on port {port} (Debug: {use_debug})...")
+    # host='0.0.0.0' makes it accessible on your network, not just localhost
+    app.run(host='0.0.0.0', port=port, debug=use_debug)
