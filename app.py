@@ -65,21 +65,6 @@ def is_admin():
 
 # --- Routes ---
 
-# This is NOT recommended for production. Use PostgreSQL + Migrations.
-with app.app_context():
-    print("--- Attempting to create database tables (temporary fix) ---")
-    try:
-        db.create_all()
-        print("--- db.create_all() executed successfully. ---")
-        # Optional: Check if tables exist (for debugging)
-        # inspector = db.inspect(db.engine)
-        # print(f"Tables found: {inspector.get_table_names()}")
-    except Exception as e:
-        print(f"--- ERROR during db.create_all(): {e} ---")
-        print(traceback.format_exc())
-    print("--- Finished database initialization attempt ---")
-# --- END TEMPORARY DATABASE INITIALIZATION ---
-
 # Basic Pages & Auth
 @app.route('/')
 def home():
