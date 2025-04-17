@@ -3,29 +3,6 @@
 
 This is the backend service for an SOS Alert and Announcement platform, built with Flask. It provides API endpoints for submitting SOS messages (via web form or dedicated API), managing these messages via an admin dashboard, and handling public announcements. The backend is designed to connect to a PostgreSQL database, suitable for deployment on platforms like Render.
 
-## Table of Contents
-
-*   [Features](#features)
-*   [Tech Stack](#tech-stack)
-*   [Project Structure](#project-structure)
-*   [Setup and Installation](#setup-and-installation)
-    *   [Prerequisites](#prerequisites)
-    *   [Local Setup](#local-setup)
-*   [Configuration](#configuration)
-    *   [Environment Variables](#environment-variables)
-*   [Running the Application](#running-the-application)
-    *   [Local Development](#local-development)
-    *   [Production (Render)](#production-render)
-*   [Database Management](#database-management)
-    *   [Initial Setup](#initial-setup)
-    *   [Migrations](#migrations)
-*   [API Endpoints](#api-endpoints)
-    *   [Authentication](#authentication)
-    *   [SOS Messages](#sos-messages)
-    *   [Announcements](#announcements)
-    *   [Admin/UI Support](#adminui-support)
-*   [Deployment (Render)](#deployment-render)
-*   [Security Considerations](#security-considerations)
 
 ## Features
 
@@ -64,12 +41,19 @@ This is the backend service for an SOS Alert and Announcement platform, built wi
 
 .
 ├── app.py # Main Flask application file
+
 ├── requirements.txt # Python dependencies
+
 ├── migrations/ # Flask-Migrate migration files
+
 ├── templates/ # HTML templates for web pages (index.html, login.html, etc.)
+
 ├── static/ # CSS, JavaScript, images (if serving static files)
+
 ├── .env # (Optional, for local development) Environment variables - DO NOT COMMIT
+
 ├── .gitignore # Git ignore file
+
 └── README.md
 
 
