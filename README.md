@@ -39,21 +39,13 @@ This is the backend service for an SOS Alert and Announcement platform, built wi
 
 
 
-.
 ├── app.py # Main Flask application file
-
 ├── requirements.txt # Python dependencies
-
 ├── migrations/ # Flask-Migrate migration files
-
 ├── templates/ # HTML templates for web pages (index.html, login.html, etc.)
-
 ├── static/ # CSS, JavaScript, images (if serving static files)
-
 ├── .env # (Optional, for local development) Environment variables - DO NOT COMMIT
-
 ├── .gitignore # Git ignore file
-
 └── README.md
 
 
