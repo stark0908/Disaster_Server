@@ -60,23 +60,18 @@ This is the backend service for an SOS Alert and Announcement platform, built wi
 
     
 
-IGNORE_WHEN_COPYING_START
-Use code with caution. Markdown
-IGNORE_WHEN_COPYING_END
+
 
 .
 ├── app.py # Main Flask application file
-├── models.py # (Optional) If models are separated
 ├── requirements.txt # Python dependencies
 ├── migrations/ # Flask-Migrate migration files
 ├── templates/ # HTML templates for web pages (index.html, login.html, etc.)
 ├── static/ # CSS, JavaScript, images (if serving static files)
 ├── .env # (Optional, for local development) Environment variables - DO NOT COMMIT
 ├── .gitignore # Git ignore file
-└── README.md # This file
+└── README.md
 
-      
-*(Adjust the structure description if your file organization differs significantly)*
 
 ## Setup and Installation
 
@@ -151,95 +146,7 @@ Configure these variables in your environment (e.g., in your `.env` file for loc
 
 Ensure your virtual environment is active and environment variables are set.
 
-```bash
-# Recommended way using Flask CLI (uses FLASK_ENV/FLASK_DEBUG)
-export FLASK_APP=app.py # Or your main file name
-flask run --host=0.0.0.0 --port=5000
-
-# Alternative direct run (if __name__ == '__main__' block is set up)
-# python app.py
-
-    
-
-IGNORE_WHEN_COPYING_START
-Use code with caution.
-IGNORE_WHEN_COPYING_END
-
-The application should be accessible at http://localhost:5000 or http://0.0.0.0:5000.
-Production (Render)
-
-Render uses a production-grade WSGI server like Gunicorn. The start command in your Render service settings should be similar to:
-
-      
-gunicorn app:app
-
-    
-
-IGNORE_WHEN_COPYING_START
-Use code with caution. Bash
-IGNORE_WHEN_COPYING_END
-
-Render automatically injects the PORT environment variable.
-Database Management
-
-This project uses Flask-SQLAlchemy and Flask-Migrate for database interactions.
-Initial Setup
-
-For the very first time you deploy or set up the database (after configuring DATABASE_URL):
-
-    Ensure the database specified in DATABASE_URL exists.
-
-    Run the custom initialization command defined in app.py:
-
-          
-    flask init-db
-
-        
-
-    IGNORE_WHEN_COPYING_START
-
-    Use code with caution. Bash
-    IGNORE_WHEN_COPYING_END
-
-    This command uses db.create_all() to create tables based on your SQLAlchemy models.
-
-Migrations
-
-For any subsequent changes to your database models (db.Model classes):
-
-    Generate a migration script:
-
-          
-    flask db migrate -m "Description of changes made to models"
-
-        
-
-    IGNORE_WHEN_COPYING_START
-
-Use code with caution. Bash
-IGNORE_WHEN_COPYING_END
-
-This compares your models to the current database state and creates a script in the migrations/versions/ directory. Review the generated script.
-
-Apply the migration to the database:
-
-      
-flask db upgrade
-
-    
-
-IGNORE_WHEN_COPYING_START
-
-    Use code with caution. Bash
-    IGNORE_WHEN_COPYING_END
-
-    This runs the migration script(s) to update the database schema.
-
-Important: Run flask db upgrade as part of your deployment process after deploying new code with model changes.
-API Endpoints
-
-(Base URL: http://yourdomain.com or http://localhost:5000)
-Authentication
+Basic
 
     POST /login
 
@@ -367,10 +274,6 @@ Security Considerations
 
         
 
-    IGNORE_WHEN_COPYING_START
-
-Use code with caution. Python
-IGNORE_WHEN_COPYING_END
 
 Input Validation: While basic validation is present, ensure all inputs (especially from the API) are robustly validated and sanitized to prevent injection attacks or unexpected errors.
 
